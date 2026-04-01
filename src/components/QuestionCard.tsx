@@ -28,16 +28,16 @@ export function QuestionCard({
   return (
     <Card className="space-y-4">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-sm font-semibold tracking-wide text-cyan-200">Q{question.id}</p>
-        <Button variant={markedForReview ? 'success' : 'ghost'} onClick={onMarkReview}>
-          <span className="inline-flex items-center gap-1">
+        <p className="text-xs font-semibold tracking-wide text-cyan-200 md:text-sm">Q{question.id}</p>
+        <Button className="px-2 py-1 text-xs md:text-sm" variant={markedForReview ? 'success' : 'ghost'} onClick={onMarkReview}>
+          <span className="inline-flex items-center gap-1 whitespace-nowrap">
             <Flag size={14} />
             {markedForReview ? 'Marked' : 'Mark for review'}
           </span>
         </Button>
       </div>
 
-      <p className="text-sm leading-7 text-slate-100">{question.prompt}</p>
+      <p className="text-sm leading-6 text-slate-100 md:leading-7">{question.prompt}</p>
 
       <div className="space-y-2">
         {question.options.map((option, index) => {

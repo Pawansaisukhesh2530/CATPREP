@@ -82,46 +82,48 @@ export function RCPracticePage({
       {loadingQuestions && <Card className="text-sm text-slate-300">Generating RC questions...</Card>}
       {questionsError && <Card className="text-sm text-rose-300">{questionsError}</Card>}
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Card className="max-h-[68vh] overflow-y-auto pr-3">
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.15em] text-cyan-200">{selectedArticle?.title ?? 'Select an article from Reading page'}</h3>
-          <p className="text-[16px] leading-8 text-slate-100 whitespace-pre-line">{selectedArticle?.bodyText ?? 'No passage selected.'}</p>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="max-h-[55vh] overflow-y-auto pr-3 lg:col-span-2 lg:max-h-[68vh]">
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.15em] text-cyan-200 md:text-base">{selectedArticle?.title ?? 'Select an article from Reading page'}</h3>
+          <p className="whitespace-pre-line text-sm leading-7 text-slate-100 md:text-base md:leading-8">{selectedArticle?.bodyText ?? 'No passage selected.'}</p>
         </Card>
 
-        {activeQuestion ? (
-          <QuestionCard
-            question={activeQuestion}
-            selectedOption={answers[activeQuestion.id] ?? null}
-            showResult={submitted}
-            markedForReview={Boolean(marked[activeQuestion.id])}
-            wrongReason={wrongReasons[activeQuestion.id] ?? ''}
-            onOptionSelect={(option) => setAnswers((prev) => ({ ...prev, [activeQuestion.id]: option }))}
-            onMarkReview={() =>
-              setMarked((prev) => ({ ...prev, [activeQuestion.id]: !prev[activeQuestion.id] }))
-            }
-            onReasonChange={(value) =>
-              setWrongReasons((prev) => ({ ...prev, [activeQuestion.id]: value }))
-            }
-          />
-        ) : (
-          <Card className="text-sm text-slate-300">Questions will appear after article selection.</Card>
-        )}
+        <div className="self-start lg:sticky lg:top-24">
+          {activeQuestion ? (
+            <QuestionCard
+              question={activeQuestion}
+              selectedOption={answers[activeQuestion.id] ?? null}
+              showResult={submitted}
+              markedForReview={Boolean(marked[activeQuestion.id])}
+              wrongReason={wrongReasons[activeQuestion.id] ?? ''}
+              onOptionSelect={(option) => setAnswers((prev) => ({ ...prev, [activeQuestion.id]: option }))}
+              onMarkReview={() =>
+                setMarked((prev) => ({ ...prev, [activeQuestion.id]: !prev[activeQuestion.id] }))
+              }
+              onReasonChange={(value) =>
+                setWrongReasons((prev) => ({ ...prev, [activeQuestion.id]: value }))
+              }
+            />
+          ) : (
+            <Card className="text-sm text-slate-300">Questions will appear after article selection.</Card>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/15 bg-white/5 p-3">
-        <div className="text-sm text-slate-300">Question {Math.min(index + 1, Math.max(questions.length, 1))} / {questions.length || 0}</div>
+        <div className="text-xs text-slate-300 md:text-sm">Question {Math.min(index + 1, Math.max(questions.length, 1))} / {questions.length || 0}</div>
 
-        <div className="flex gap-2">
-          <Button variant="ghost" onClick={() => setIndex((i) => Math.max(i - 1, 0))}>
+        <div className="flex flex-wrap gap-2">
+          <Button className="px-3 py-2 text-xs md:text-sm" variant="ghost" onClick={() => setIndex((i) => Math.max(i - 1, 0))}>
             Previous
           </Button>
-          <Button variant="ghost" onClick={() => setIndex((i) => Math.min(i + 1, Math.max(questions.length - 1, 0)))}>
+          <Button className="px-3 py-2 text-xs md:text-sm" variant="ghost" onClick={() => setIndex((i) => Math.min(i + 1, Math.max(questions.length - 1, 0)))}>
             Next
           </Button>
-          <Button onClick={handleSubmit}>Submit</Button>
+          <Button className="px-3 py-2 text-xs md:text-sm" onClick={handleSubmit}>Submit</Button>
         </div>
 
-        <div className="text-sm font-semibold text-cyan-200">{score ? `Score: ${score}` : 'Unsubmitted'}</div>
+        <div className="text-xs font-semibold text-cyan-200 md:text-sm">{score ? `Score: ${score}` : 'Unsubmitted'}</div>
       </div>
 
       {evaluation?.feedback && (

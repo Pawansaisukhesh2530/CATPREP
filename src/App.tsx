@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { Topbar } from './components/Topbar'
@@ -32,6 +32,7 @@ const QUESTION_TYPES: QuestionType[] = ['Inference', 'Tone', 'Main Idea', 'Vocab
 function App() {
   const [activePage, setActivePage] = useState<NavKey>('dashboard')
   const [collapsed, setCollapsed] = useState(false)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   const [topic, setTopic] = useState('economy')
   const [page, setPage] = useState(1)
@@ -308,23 +309,38 @@ function App() {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_15%_20%,rgba(34,211,238,0.14),transparent_30%),radial-gradient(circle_at_75%_10%,rgba(99,102,241,0.2),transparent_35%),linear-gradient(130deg,#020617,#0b1026_45%,#111827)] text-slate-100">
       <div className="flex min-h-screen">
-        <Sidebar collapsed={collapsed} active={activePage} onNavigate={setActivePage} />
+        <Sidebar
+          collapsed={collapsed}
+          active={activePage}
+          onNavigate={setActivePage}
+          mobileOpen={mobileSidebarOpen}
+          onCloseMobile={() => setMobileSidebarOpen(false)}
+        />
 
-        <main className="w-full p-4 md:p-6">
+        <main className="w-full p-3 sm:p-4 md:p-6">
           <Topbar timerLabel={timerLabel} progress={progress} streak={streak} />
 
           <section className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-cyan-300/80">VARC Workspace</p>
-              <h2 className="font-heading text-2xl font-semibold text-white md:text-3xl">{pageTitle}</h2>
+              <p className="text-xs uppercase tracking-[0.18em] text-cyan-300/80">VARC Workspace</p>
+              <h2 className="font-heading text-xl font-semibold text-white sm:text-2xl md:text-3xl">{pageTitle}</h2>
             </div>
 
-            <Button variant="ghost" onClick={() => setCollapsed((value) => !value)}>
-              <span className="inline-flex items-center gap-2">
-                {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
-                {collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
-              </span>
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" className="lg:hidden" onClick={() => setMobileSidebarOpen(true)}>
+                <span className="inline-flex items-center gap-2">
+                  <Menu size={16} />
+                  Menu
+                </span>
+              </Button>
+
+              <Button variant="ghost" className="hidden lg:inline-flex" onClick={() => setCollapsed((value) => !value)}>
+                <span className="inline-flex items-center gap-2">
+                  {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+                  {collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+                </span>
+              </Button>
+            </div>
           </section>
 
           <AnimatePresence mode="wait">
