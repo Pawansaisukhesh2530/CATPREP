@@ -81,6 +81,13 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.AllowAny'],
 }
 
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'catprep-cache',
+    }
+}
+
 GUARDIAN_API_KEY = os.getenv('GUARDIAN_API_KEY') or os.getenv('VITE_GUARDIAN_API_KEY')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY') or os.getenv('VITE_OPENAI_API_KEY')
 OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')

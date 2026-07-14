@@ -6,6 +6,7 @@ import type {
   RCQuestion,
   SaveAttemptPayload,
   SummaryEvaluationResult,
+  ToneEvaluationResult,
 } from '../types'
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ?? 'http://127.0.0.1:8000'
@@ -25,14 +26,17 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T
 }
 
-export async function fetchArticles(topic: string, page: number): Promise<PaginatedArticles> {
-  const params = new URLSearchParams({ topic, page: String(page) })
+export async function fetchArticles(source: string, page: number): Promise<PaginatedArticles> {
+  const params = new URLSearchParams({ source, page: String(page) })
   const payload = await requestJson<{
     articles: Array<{
       id: string
       title: string
       content: string
-      section?: string
+      source: string
+      type: string
+      summary?: string
+      url?: string
       published_at?: string
     }>
     page: number
@@ -44,7 +48,11 @@ export async function fetchArticles(topic: string, page: number): Promise<Pagina
       id: item.id,
       title: item.title,
       bodyText: item.content,
-      sectionName: item.section,
+      source: item.source,
+      contentType: item.type,
+      summary: item.summary,
+      sectionName: item.type,
+      url: item.url,
       publishedAt: item.published_at,
     })),
     page: payload.page,
@@ -92,6 +100,14 @@ export async function evaluateSummary(articleText: string, userSummary: string):
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ article_text: articleText, user_summary: userSummary }),
+  })
+}
+
+export async function evaluateTone(passage: string, userTone: string): Promise<ToneEvaluationResult> {
+  return requestJson<ToneEvaluationResult>(`${API_BASE}/api/evaluate-tone/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ passage, user_tone: userTone }),
   })
 }
 

@@ -34,7 +34,7 @@ function App() {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
-  const [topic, setTopic] = useState('economy')
+  const [source, setSource] = useState('guardian')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
 
@@ -56,7 +56,7 @@ function App() {
     setArticlesError(null)
 
     try {
-      const payload = await fetchArticles(topic, page)
+      const payload = await fetchArticles(source, page)
       setArticles(payload.articles)
       setTotalPages(payload.pages)
       setSelectedArticleId((current) => {
@@ -74,7 +74,7 @@ function App() {
     } finally {
       setArticlesLoading(false)
     }
-  }, [page, topic])
+  }, [page, source])
 
   useEffect(() => {
     void loadArticles()
@@ -262,11 +262,11 @@ function App() {
             selectedArticle={selectedArticle}
             loading={articlesLoading}
             error={articlesError}
-            topic={topic}
+            source={source}
             page={page}
             totalPages={totalPages}
-            onTopicChange={(value) => {
-              setTopic(value)
+            onSourceChange={(value) => {
+              setSource(value)
               setPage(1)
             }}
             onPageChange={setPage}

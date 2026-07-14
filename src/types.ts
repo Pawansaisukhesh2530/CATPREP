@@ -6,6 +6,9 @@ export type Article = {
   id: string
   title: string
   bodyText: string
+  source?: string
+  contentType?: string
+  summary?: string
   publishedAt?: string
   sectionName?: string
   url?: string
@@ -68,6 +71,13 @@ export type ExplainTextResult = {
   simplified_explanation: string
   tone: string
   intent: string
+}
+
+export type ToneEvaluationResult = {
+  actualTone: string
+  userTone: string
+  isCorrect: boolean
+  explanation: string
 }
 
 export type AnalyticsInsightResult = {

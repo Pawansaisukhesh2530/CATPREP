@@ -1,19 +1,19 @@
 import { motion } from 'framer-motion'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
-import { evaluateSummary, explainSelectedText } from '../services/api'
-import type { Article, ExplainTextResult, SummaryEvaluationResult } from '../types'
+import { evaluateSummary, evaluateTone, explainSelectedText } from '../services/api'
+import type { Article, ExplainTextResult, SummaryEvaluationResult, ToneEvaluationResult } from '../types'
 
 type ReadingPageProps = {
   articles: Article[]
   selectedArticle: Article | null
   loading: boolean
   error: string | null
-  topic: string
+  source: string
   page: number
   totalPages: number
-  onTopicChange: (topic: string) => void
+  onSourceChange: (source: string) => void
   onPageChange: (nextPage: number) => void
   onSelectArticle: (articleId: string) => void
   onReload: () => void
@@ -29,10 +29,10 @@ export function ReadingPage({
   selectedArticle,
   loading,
   error,
-  topic,
+  source,
   page,
   totalPages,
-  onTopicChange,
+  onSourceChange,
   onPageChange,
   onSelectArticle,
   onReload,
@@ -45,6 +45,10 @@ export function ReadingPage({
   const [explainLoading, setExplainLoading] = useState(false)
   const [summaryEvaluation, setSummaryEvaluation] = useState<SummaryEvaluationResult | null>(null)
   const [summaryLoading, setSummaryLoading] = useState(false)
+  const [toneEvaluation, setToneEvaluation] = useState<ToneEvaluationResult | null>(null)
+  const [toneEvaluationLoading, setToneEvaluationLoading] = useState(false)
+  const [toneError, setToneError] = useState<string | null>(null)
+  const [cachedToneByPassage, setCachedToneByPassage] = useState<Record<string, { actualTone: string; explanation: string }>>({})
   const [cachedExplanations, setCachedExplanations] = useState<Record<string, ExplainTextResult>>({})
   const [showExplainDrawer, setShowExplainDrawer] = useState(false)
 
@@ -58,6 +62,18 @@ export function ReadingPage({
   )
   const totalWords = useMemo(() => (selectedArticle?.bodyText.split(/\s+/).length ?? 0), [selectedArticle])
   const readProgress = Math.min(100, Math.round((summary.length / 180) * 100 + 35))
+  const cachedToneForCurrentPassage = useMemo(() => {
+    if (!selectedArticle) {
+      return null
+    }
+    return cachedToneByPassage[selectedArticle.id] ?? null
+  }, [cachedToneByPassage, selectedArticle])
+  const instantToneMatch = useMemo(() => {
+    if (!cachedToneForCurrentPassage) {
+      return null
+    }
+    return cachedToneForCurrentPassage.actualTone.toLowerCase() === tone.toLowerCase()
+  }, [cachedToneForCurrentPassage, tone])
 
   const renderParagraph = (text: string) => {
     return text.split(' ').map((word, idx) => {
@@ -117,21 +133,72 @@ export function ReadingPage({
     }
   }
 
+  useEffect(() => {
+    setToneEvaluation(null)
+    setToneError(null)
+  }, [selectedArticle?.id])
+
+  useEffect(() => {
+    if (!cachedToneForCurrentPassage) {
+      return
+    }
+    setToneEvaluation({
+      actualTone: cachedToneForCurrentPassage.actualTone,
+      userTone: tone,
+      isCorrect: cachedToneForCurrentPassage.actualTone.toLowerCase() === tone.toLowerCase(),
+      explanation: cachedToneForCurrentPassage.explanation,
+    })
+  }, [cachedToneForCurrentPassage, tone])
+
+  const handleEvaluateTone = async () => {
+    if (!selectedArticle) {
+      return
+    }
+
+    setToneError(null)
+    const passageKey = selectedArticle.id
+    const cached = cachedToneByPassage[passageKey]
+    if (cached) {
+      setToneEvaluation({
+        actualTone: cached.actualTone,
+        userTone: tone,
+        isCorrect: cached.actualTone.toLowerCase() === tone.toLowerCase(),
+        explanation: cached.explanation,
+      })
+      return
+    }
+
+    setToneEvaluationLoading(true)
+    try {
+      const result = await evaluateTone(selectedArticle.bodyText, tone)
+      setToneEvaluation(result)
+      setCachedToneByPassage((prev) => ({
+        ...prev,
+        [passageKey]: { actualTone: result.actualTone, explanation: result.explanation },
+      }))
+    } catch (error) {
+      setToneError(error instanceof Error ? error.message : 'Failed to evaluate tone')
+      setToneEvaluation(null)
+    } finally {
+      setToneEvaluationLoading(false)
+    }
+  }
+
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 pb-24 lg:pb-0">
       <Card>
         <div className="flex flex-wrap items-center gap-3">
           <h3 className="text-sm font-semibold text-cyan-200 md:text-base">Live Articles</h3>
           <select
-            value={topic}
-            onChange={(event) => onTopicChange(event.target.value)}
+            value={source}
+            onChange={(event) => onSourceChange(event.target.value)}
             className="rounded-lg border border-white/20 bg-slate-900 px-2 py-1 text-xs text-slate-100"
           >
-            <option value="economy">Economy</option>
-            <option value="science">Science</option>
-            <option value="technology">Technology</option>
-            <option value="politics">Politics</option>
-            <option value="culture">Culture</option>
+            <option value="guardian">News</option>
+            <option value="aeon">Philosophy</option>
+            <option value="nasa">Science</option>
+            <option value="gutenberg">Classic</option>
+            <option value="mixed">Mixed (CAT Mode)</option>
           </select>
           <Button variant="ghost" onClick={onReload}>Reload</Button>
           {loading && <span className="text-xs text-slate-400">Loading articles...</span>}
@@ -148,7 +215,10 @@ export function ReadingPage({
                 }`}
             >
               <p className="font-semibold">{article.title}</p>
-              <p className="mt-1 text-xs text-slate-400">{article.sectionName ?? 'General'} • {article.publishedAt?.slice(0, 10) ?? 'Unknown date'}</p>
+              <p className="mt-1 text-xs text-slate-400">
+                {(article.contentType ?? article.sectionName ?? 'general').toUpperCase()} • {(article.source ?? 'mixed').toUpperCase()}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">{article.publishedAt?.slice(0, 10) ?? 'Unknown date'}</p>
             </button>
           ))}
         </div>
@@ -168,7 +238,9 @@ export function ReadingPage({
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="font-heading text-xl text-white md:text-2xl">{selectedArticle?.title ?? 'Select an article'}</h2>
-              <p className="text-sm text-slate-400 md:text-base">Live Guardian content • {Math.max(1, Math.round(totalWords / 220))} min read • {totalWords} words</p>
+              <p className="text-sm text-slate-400 md:text-base">
+                {selectedArticle?.source?.toUpperCase() ?? 'CONTENT'} • {selectedArticle?.contentType ?? 'general'} • {Math.max(1, Math.round(totalWords / 220))} min read • {totalWords} words
+              </p>
             </div>
 
             <div className="flex items-center gap-2 text-sm text-slate-200">
@@ -187,6 +259,12 @@ export function ReadingPage({
           </div>
 
           <article className="max-h-[55vh] space-y-6 overflow-y-auto pr-2 text-sm text-slate-100 md:text-base" style={{ fontSize, lineHeight: 1.9 }}>
+            {selectedArticle?.summary && (
+              <div className="rounded-xl border border-cyan-300/20 bg-cyan-300/5 p-3 text-xs text-cyan-100">
+                <p className="font-semibold uppercase tracking-[0.14em] text-cyan-200">AI Summary</p>
+                <p className="mt-1">{selectedArticle.summary}</p>
+              </div>
+            )}
             {paragraphs.map((paragraph) => (
               <p key={paragraph.slice(0, 20)}>{renderParagraph(paragraph)}</p>
             ))}
@@ -225,7 +303,20 @@ export function ReadingPage({
           </label>
 
           <label className="block space-y-2">
-            <span className="text-xs text-slate-400">Select tone</span>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-slate-400">Select tone</span>
+              {instantToneMatch !== null && (
+                <span
+                  className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                    instantToneMatch
+                      ? 'bg-emerald-400/20 text-emerald-300'
+                      : 'bg-rose-400/20 text-rose-300'
+                  }`}
+                >
+                  {instantToneMatch ? 'Correct' : 'Incorrect'}
+                </span>
+              )}
+            </div>
             <select
               value={tone}
               onChange={(event) => setTone(event.target.value)}
@@ -233,14 +324,40 @@ export function ReadingPage({
             >
               <option>Neutral-Analytical</option>
               <option>Critical</option>
+              <option>Supportive</option>
+              <option>Skeptical</option>
+              <option>Descriptive</option>
               <option>Persuasive</option>
-              <option>Reflective</option>
             </select>
+            <div className="pt-1">
+              <Button variant="ghost" onClick={handleEvaluateTone}>Evaluate Tone</Button>
+              {toneEvaluationLoading && <span className="ml-2 text-xs text-slate-400">Evaluating tone...</span>}
+            </div>
           </label>
 
           <div className="rounded-xl border border-white/15 bg-white/5 p-3 text-xs text-slate-300">
             Your selected tone: <span className="font-semibold text-cyan-200">{tone}</span>
           </div>
+
+          {toneError && (
+            <div className="rounded-xl border border-rose-300/30 bg-rose-300/10 p-3 text-xs text-rose-200">
+              {toneError}
+            </div>
+          )}
+
+          {toneEvaluation && (
+            <div className="space-y-2 rounded-xl border border-white/15 bg-white/5 p-3 text-xs text-slate-200">
+              <p className={toneEvaluation.isCorrect ? 'text-emerald-300 font-semibold' : 'text-rose-300 font-semibold'}>
+                {toneEvaluation.isCorrect ? 'Correct' : 'Incorrect'}
+              </p>
+              <p>
+                <span className="text-cyan-200">Actual tone:</span> {toneEvaluation.actualTone}
+              </p>
+              <div className="rounded-lg border border-white/10 bg-slate-900/45 p-2 text-slate-300">
+                {toneEvaluation.explanation}
+              </div>
+            </div>
+          )}
 
           {summaryEvaluation && (
             <div className="rounded-xl border border-white/15 bg-white/5 p-3 text-xs text-slate-200 space-y-2">
